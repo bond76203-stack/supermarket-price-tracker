@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>スーパー底値・価格比較 | スマートフォン版</title>
+  <meta name="description" content="近所のスーパーの商品の底値と価格比較を簡単に記録・管理できるスマートフォン対応Webアプリ" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Dynamic Glow Backgrounds -->
+  <div class="bg-glow-1"></div>
+  <div class="bg-glow-2"></div>
+
+  <!-- Application Header -->
+  <header class="app-header">
+    <div class="app-brand">
+      <div class="app-brand-icon">
+        <i data-lucide="shopping-bag"></i>
+      </div>
+      <span>スーパー底値帳</span>
+      <span id="demo-indicator" class="demo-badge" style="display: none;">Demo</span>
+    </div>
+    <div class="header-actions">
+      <button id="auth-status-btn" class="auth-header-btn">
+        <i data-lucide="user"></i>
+        <span id="auth-btn-label">ログイン</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+
+    <!-- Toast Notification Element -->
+    <div id="toast" class="toast">
+      <i data-lucide="check-circle-2"></i>
+      <span id="toast-message">保存しました</span>
+    </div>
+
+    <!-- 1. 検索・底値一覧 View -->
+    <section id="view-search" class="view-section active">
+      <div class="search-box">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="search-input" class="search-input" placeholder="商品名で比較検索（例: 牛乳, 卵, 食パン）" />
+        <button id="clear-search" class="clear-search-btn" style="display: none;">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <!-- Price Lists & Comparisons Area -->
+      <div id="search-results-container">
+        <!-- Dynamic JS Injected List -->
+      </div>
+    </section>
+
+    <!-- 2. 価格登録 View -->
+    <section id="view-register" class="view-section">
+      <div class="card">
+        <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="plus-circle" style="color: var(--primary);"></i>
+          新しい価格を登録
+        </h2>
+
+        <form id="record-form">
+          <div class="form-group">
+            <label class="form-label" for="product_name">商品名 <span class="required-mark">*</span></label>
+            <input type="text" id="product_name" class="form-input" placeholder="例: ほうれん草, 牛乳 1L" maxlength="100" />
+            <div id="err-product_name" class="error-text"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="store_name">店舗名 <span class="required-mark">*</span></label>
+            <input type="text" id="store_name" class="form-input" placeholder="例: イオン 〇〇店, ライフ" maxlength="100" />
+            <div id="err-store_name" class="error-text"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="price">価格 (円) <span class="required-mark">*</span></label>
+            <input type="number" id="price" class="form-input" placeholder="例: 198" min="1" step="1" />
+            <div id="err-price" class="error-text"></div>
+          </div>
+
+          <!-- Tax & Sale Toggles -->
+          <div class="toggle-group">
+            <label id="toggle-tax" class="toggle-chip active">
+              <input type="checkbox" id="is_tax_included" checked />
+              <i data-lucide="check"></i> 税込価格
+            </label>
+            <label id="toggle-sale" class="toggle-chip">
+              <input type="checkbox" id="is_sale" />
+              <i data-lucide="sparkles"></i> 特売・セール
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="confirmed_at">確認日 <span class="required-mark">*</span></label>
+            <input type="date" id="confirmed_at" class="form-input" />
+            <div id="err-confirmed_at" class="error-text"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="memo">メモ (最大500文字)</label>
+            <textarea id="memo" class="form-textarea" placeholder="例: 火曜市限定。お一人様2点まで" maxlength="500"></textarea>
+            <div id="err-memo" class="error-text"></div>
+          </div>
+
+          <button type="submit" class="btn-primary" id="submit-record-btn">
+            <i data-lucide="save"></i> 価格を登録する
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 3. マイ投稿一覧 View -->
+    <section id="view-myposts" class="view-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="user-check" style="color: var(--primary);"></i>
+          マイ投稿一覧
+        </h2>
+        <span id="myposts-count" style="font-size: 0.8rem; color: var(--text-muted);">0件</span>
+      </div>
+
+      <div id="myposts-container">
+        <!-- Injected list of user's own records -->
+      </div>
+    </section>
+
+    <!-- 4. 設定 & Supabase 接続 Modal / Auth Guard Modal -->
+    <div id="auth-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="auth-modal-title">ログイン / 新規登録</h3>
+          <button id="close-auth-modal" class="modal-close-btn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <!-- Auth Tabs -->
+        <div class="auth-tabs" id="auth-tab-bar">
+          <button id="tab-login" class="auth-tab-btn active">ログイン</button>
+          <button id="tab-signup" class="auth-tab-btn">新規アカウント登録</button>
+        </div>
+
+        <!-- Auth Form -->
+        <form id="auth-form">
+          <div class="form-group">
+            <label class="form-label" for="auth-email">メールアドレス</label>
+            <input type="email" id="auth-email" class="form-input" placeholder="you@example.com" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="auth-password">パスワード</label>
+            <input type="password" id="auth-password" class="form-input" placeholder="6文字以上" required minlength="6" />
+          </div>
+          <div id="auth-error-msg" class="error-text" style="margin-bottom: 12px; text-align: center;"></div>
+          <button type="submit" class="btn-primary" id="auth-submit-btn">ログインする</button>
+        </form>
+
+        <hr style="border: none; border-top: 1px solid var(--bg-card-border); margin: 20px 0;" />
+
+        <!-- Supabase Connection Config Collapsible -->
+        <div>
+          <button id="toggle-supabase-config" class="btn-secondary" style="font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <i data-lucide="settings"></i> Supabase 接続情報の設定 (Vite .env / 設定)
+          </button>
+
+          <div id="supabase-config-body" style="display: none; margin-top: 14px; text-align: left;">
+            <p style="font-size: 0.775rem; color: var(--text-muted); margin-bottom: 10px;">
+              Viteの <code>.env</code> ファイルに <code>VITE_SUPABASE_URL</code> と <code>VITE_SUPABASE_ANON_KEY</code> を設定するか、下部フォームから個別に保存できます。
+            </p>
+            <div class="form-group">
+              <label class="form-label" for="cfg-url">Supabase URL</label>
+              <input type="url" id="cfg-url" class="form-input" placeholder="https://xxx.supabase.co" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="cfg-anon">Supabase Anon / Publishable Key</label>
+              <input type="text" id="cfg-anon" class="form-input" placeholder="eyJhbGciOi..." />
+            </div>
+            <div class="form-group">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="cfg-demo-mode" />
+                デモモード（ローカルストレージで試用）
+              </label>
+            </div>
+            <button type="button" id="save-config-btn" class="btn-primary" style="font-size: 0.85rem; padding: 10px;">
+              接続設定を保存
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Edit Record Modal -->
+    <div id="edit-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">価格投稿の編集</h3>
+          <button id="close-edit-modal" class="modal-close-btn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+
+        <form id="edit-record-form">
+          <input type="hidden" id="edit-id" />
+          <div class="form-group">
+            <label class="form-label" for="edit-product_name">商品名 <span class="required-mark">*</span></label>
+            <input type="text" id="edit-product_name" class="form-input" maxlength="100" />
+            <div id="edit-err-product_name" class="error-text"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-store_name">店舗名 <span class="required-mark">*</span></label>
+            <input type="text" id="edit-store_name" class="form-input" maxlength="100" />
+            <div id="edit-err-store_name" class="error-text"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-price">価格 (円) <span class="required-mark">*</span></label>
+            <input type="number" id="edit-price" class="form-input" min="1" step="1" />
+            <div id="edit-err-price" class="error-text"></div>
+          </div>
+
+          <div class="toggle-group">
+            <label id="edit-toggle-tax" class="toggle-chip">
+              <input type="checkbox" id="edit-is_tax_included" />
+              <i data-lucide="check"></i> 税込価格
+            </label>
+            <label id="edit-toggle-sale" class="toggle-chip">
+              <input type="checkbox" id="edit-is_sale" />
+              <i data-lucide="sparkles"></i> 特売・セール
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-confirmed_at">確認日 <span class="required-mark">*</span></label>
+            <input type="date" id="edit-confirmed_at" class="form-input" />
+            <div id="edit-err-confirmed_at" class="error-text"></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="edit-memo">メモ</label>
+            <textarea id="edit-memo" class="form-textarea" maxlength="500"></textarea>
+            <div id="edit-err-memo" class="error-text"></div>
+          </div>
+
+          <button type="submit" class="btn-primary">変更を保存</button>
+        </form>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-target="view-search">
+      <i data-lucide="search"></i>
+      <span>底値・比較</span>
+    </button>
+    <button class="nav-item" data-target="view-register">
+      <i data-lucide="plus-square"></i>
+      <span>価格登録</span>
+    </button>
+    <button class="nav-item" data-target="view-myposts">
+      <i data-lucide="list"></i>
+      <span>マイ投稿</span>
+    </button>
+    <button class="nav-item" id="nav-account-btn">
+      <i data-lucide="user"></i>
+      <span>アカウント</span>
+    </button>
+  </nav>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
